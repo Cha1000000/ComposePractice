@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Compose Practice</string>
+    <string name="drawer_header">Примеры</string>
+    <string name="menu">Menu</string>
+    <string name="select_task_text">Выбери задание</string>
+    <string name="task1_label_title">Сбор данных из элементов списка</string>
+    <string name="task2_label_title">Список с добавлением, удалением и обновлением данных</string>
+    <string name="button_task1_text">Задание 1</string>
+    <string name="button_task2_text">Задание 2</string>
+    <string name="task1_screen_title">Сбор ввода данных</string>
+    <string name="task2_screen_title">Добавить, удалить, обновить</string>
+    <string name="text_input_hint">Ввести текст</string>
+    <string name="button_collect_input_text">Собрать ввод</string>
+    <string name="result_alert_title">Результат</string>
+    <string name="empty_data">Данные отсутствуют</string>
+    <string name="button_ok_label">OK</string>
+    <string name="button_cancel_label">Отмена</string>
+    <string name="delete_actions">Удаление</string>
+    <string name="delete_selected">Выбранные</string>
+    <string name="delete_all">Удалить все</string>
+    <string name="text_empty">Пусто</string>
+</resources>
