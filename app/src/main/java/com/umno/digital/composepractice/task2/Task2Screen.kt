@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.DismissValue
 import androidx.compose.material.ExperimentalMaterialApi
@@ -27,6 +28,7 @@ import androidx.compose.material.Surface
 import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.pullRefreshIndicatorTransform
@@ -35,12 +37,11 @@ import androidx.compose.material.rememberDismissState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,14 +54,15 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.umno.digital.composepractice.MAIN_SCREEN
 import com.umno.digital.composepractice.R
 import com.umno.digital.composepractice.common.DismissBackground
 import com.umno.digital.composepractice.data.UuidItem
-import com.umno.digital.composepractice.data.createUuidsList
 import com.umno.digital.composepractice.progress.ProgressIndicator
 import com.umno.digital.composepractice.ui.theme.ComposePracticeTheme
+import com.umno.digital.composepractice.ui.theme.Orange
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -69,22 +71,24 @@ import java.util.UUID
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun ListOfUuidsScreen(
+    uuidItemsViewModel: UuidItemsViewModel = viewModel(),
     paddingValues: PaddingValues,
     navController: NavHostController,
 ) {
-    var uuidList by rememberSaveable { mutableStateOf(createUuidsList()) }
+    // Collect the state of uuids from the view model
+    val uuidList by uuidItemsViewModel.uuidsListState.collectAsState()
     val refreshScope = rememberCoroutineScope()
     var refreshing by remember { mutableStateOf(false) }
 
     fun refresh() = refreshScope.launch {
         refreshing = true
         delay(300)
-        uuidList = createUuidsList()
+        uuidItemsViewModel.refreshAll()
         refreshing = false
     }
 
     val refreshState = rememberPullRefreshState(refreshing, ::refresh)
-    val rotation = animateFloatAsState(refreshState.progress * 120, label = "")
+    val rotation = animateFloatAsState(refreshState.progress * 300, label = "")
 
     Scaffold(
         topBar = {
@@ -116,7 +120,9 @@ fun ListOfUuidsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
+                    .background(color = MaterialTheme.colorScheme.background)
                     .pullRefresh(refreshState),
+                contentAlignment = Alignment.BottomEnd,
             ) {
                 val state = rememberLazyListState()
                 LazyColumn(
@@ -131,16 +137,21 @@ fun ListOfUuidsScreen(
                             itemContent = { _, item ->
                                 UUIDItemSwipeToDeleteWrapper(
                                     uuidItem = item,
-                                    onUpdateUUID = { updatedUUID ->
-                                        uuidList = uuidList.map { if (it == item) UuidItem(updatedUUID) else it }
-                                    },
-                                    onRemove = { currentItem ->
-                                        uuidList = uuidList.filterNot { it.uuid == currentItem.uuid }
-                                    }
+                                    onUpdateUUID = { uuidItemsViewModel.refreshItem(item) },
+                                    onRemove = { uuidItemsViewModel.removeItem(item) }
                                 )
                             }
                         )
                     }
+                }
+                FloatingActionButton(
+                    modifier = Modifier.padding(end = 12.dp, bottom = 30.dp),
+                    onClick = { uuidItemsViewModel.addItem() },
+                    containerColor = Orange,
+                    contentColor = MaterialTheme.colorScheme.background,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "Add item")
                 }
                 //PullRefreshIndicator(refreshing, refreshState, Modifier.align(Alignment.TopCenter))
                 // Custom Refresh Indicator
@@ -151,7 +162,7 @@ fun ListOfUuidsScreen(
                         .pullRefreshIndicatorTransform(refreshState)
                         .rotate(rotation.value),
                     shape = RoundedCornerShape(50.dp),
-                    color = MaterialTheme.colorScheme.background,
+                    color = MaterialTheme.colorScheme.onSecondary,
                     elevation = if (refreshState.progress > 0 || refreshing) 20.dp else 0.dp,
                 ) {
                     Box {
@@ -173,7 +184,7 @@ fun ListOfUuidsScreen(
 }
 
 @Composable
-fun UUIDItem(item: UuidItem, onUpdateUUID: (String) -> Unit) {
+fun UUIDItem(item: UuidItem, onUpdateUUID: () -> Unit) {
     Column(
         modifier = Modifier
             .background(Color.Gray)
@@ -184,11 +195,11 @@ fun UUIDItem(item: UuidItem, onUpdateUUID: (String) -> Unit) {
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background)
                 .padding(start = 20.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.Absolute.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = item.uuid)
-            IconButton(onClick = { onUpdateUUID(UUID.randomUUID().toString()) }) {
+            Text(text = item.uuid, fontSize = 14.sp)
+            IconButton(onClick = onUpdateUUID) {
                 Icon(
                     imageVector = Icons.Filled.Refresh,
                     contentDescription = "Refresh",
@@ -222,12 +233,11 @@ fun ListItemPreview() {
 @Composable
 fun UUIDItemSwipeToDeleteWrapper(
     uuidItem: UuidItem,
-    onUpdateUUID: (String) -> Unit,
-    onRemove: (UuidItem) -> Unit
+    onUpdateUUID: () -> Unit,
+    onRemove: () -> Unit
 ) {
     val context = LocalContext.current
     var show by remember { mutableStateOf(true) }
-    val currentItem by rememberUpdatedState(uuidItem)
     val dismissState = rememberDismissState(
         confirmStateChange = {
             if (it == DismissValue.DismissedToStart/* || it == DismissValue.DismissedToEnd*/) {
@@ -254,7 +264,7 @@ fun UUIDItemSwipeToDeleteWrapper(
     LaunchedEffect(show) {
         if (!show) {
             delay(800)
-            onRemove(currentItem)
+            onRemove()
             Toast.makeText(context, "Item removed", Toast.LENGTH_SHORT).show()
         }
     }

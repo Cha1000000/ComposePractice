@@ -24,7 +24,7 @@ fun NavGraph(
             ListOfTextInputsScreen(paddingValues, navController)
         }
         composable(TASK_2_SCREEN) {
-            ListOfUuidsScreen(paddingValues, navController)
+            ListOfUuidsScreen(paddingValues = paddingValues, navController = navController)
         }
     }
 }
