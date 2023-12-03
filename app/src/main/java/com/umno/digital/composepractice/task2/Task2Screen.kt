@@ -114,6 +114,17 @@ fun ListOfUuidsScreen(
                 },
             )
         },
+        floatingActionButton = {
+            FloatingActionButton(
+                modifier = Modifier.padding(bottom = 70.dp),
+                onClick = { uuidItemsViewModel.addItem() },
+                containerColor = Orange,
+                contentColor = MaterialTheme.colorScheme.background,
+                shape = CircleShape
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "Add item")
+            }
+        },
     ) {
         Surface {
             Box(
@@ -143,15 +154,6 @@ fun ListOfUuidsScreen(
                             }
                         )
                     }
-                }
-                FloatingActionButton(
-                    modifier = Modifier.padding(end = 12.dp, bottom = 30.dp),
-                    onClick = { uuidItemsViewModel.addItem() },
-                    containerColor = Orange,
-                    contentColor = MaterialTheme.colorScheme.background,
-                    shape = CircleShape
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add item")
                 }
                 //PullRefreshIndicator(refreshing, refreshState, Modifier.align(Alignment.TopCenter))
                 // Custom Refresh Indicator
