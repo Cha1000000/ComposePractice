@@ -113,7 +113,7 @@ fun ListOfTextInputsScreen(
     val context = LocalContext.current
     
     // Состояние выбранных элементов
-    var hasSelectedItems by remember { mutableStateOf(false) }
+    val selectedItems = remember { mutableStateListOf<TextItemData>() }
 
     Scaffold(
         topBar = {
@@ -131,35 +131,29 @@ fun ListOfTextInputsScreen(
             TextInputList(
                 textInputList = textInputList,
                 deletedItems = deletedItems,
+                selectedItems = selectedItems,
                 keyboardController = keyboardController,
-                onItemSelected = { 
-                    // Обновляем состояние выбранных элементов
-                    hasSelectedItems = textInputList.any { it.isSelected && !deletedItems.contains(it) }
-                }
             )
             
-            if (hasSelectedItems) {
+            if (selectedItems.isNotEmpty()) {
                 FloatingDeleteExtendedButton(
                     onDeleteAllClick = {
                         textInputList = textInputList.drop(textInputList.size)
-                        hasSelectedItems = false
+                        selectedItems.clear()
                     },
                     onDeleteSelectedClick = { 
-                        deleteSelected(textInputList, deletedItems)
-                        // Сбрасываем выделение после удаления
-                        textInputList.forEach { it.isSelected = false }
+                        deletedItems.addAll(selectedItems)
+                        selectedItems.clear()
                         textInputList = ArrayList(textInputList)
-                        hasSelectedItems = false
                     }
                 )
             }
             
-            // Обертка для кнопки с дополнительным отступом снизу
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
-                    .padding(bottom = 56.dp), // Отступ для нижней панели навигации
+                    .padding(bottom = 56.dp),
                 contentAlignment = Alignment.BottomCenter
             ) {
                 CollectInputButton(
@@ -213,8 +207,8 @@ private fun TextInputTopAppBar(onNavigateBack: () -> Unit) {
 private fun TextInputList(
     textInputList: List<TextItemData>,
     deletedItems: SnapshotStateList<TextItemData>,
+    selectedItems: SnapshotStateList<TextItemData>,
     keyboardController: androidx.compose.ui.platform.SoftwareKeyboardController?,
-    onItemSelected: () -> Unit
 ) {
     val state = rememberLazyListState()
     
@@ -234,26 +228,28 @@ private fun TextInputList(
                     exit = shrinkHorizontally(animationSpec = tween(300))
                 ) {
                     val text = rememberSaveable { mutableStateOf(item.text) }
-                    val isSelected = rememberSaveable { mutableStateOf(item.isSelected) }
                     
                     TextInputCard(
                         item = item,
                         text = text,
-                        isSelected = isSelected,
+                        isSelected = selectedItems.contains(item),
                         onItemClick = {
                             keyboardController?.hide()
-                            toggleSelectedItem(
-                                item = item,
-                                isSelected = isSelected,
-                            )
-                            onItemSelected()
+                            // Если есть другие выделенные элементы, разрешаем короткое нажатие
+                            if (selectedItems.isNotEmpty()) {
+                                if (selectedItems.contains(item)) {
+                                    selectedItems.remove(item)
+                                } else {
+                                    selectedItems.add(item)
+                                }
+                            }
                         },
                         onLongPress = {
-                            toggleSelectedItem(
-                                item = item,
-                                isSelected = isSelected,
-                            )
-                            onItemSelected()
+                            if (selectedItems.contains(item)) {
+                                selectedItems.remove(item)
+                            } else {
+                                selectedItems.add(item)
+                            }
                         }
                     )
                 }
@@ -276,14 +272,6 @@ private fun CollectInputButton(onClick: () -> Unit) {
             style = MaterialTheme.typography.titleLarge,
         )
     }
-}
-
-private fun toggleSelectedItem(
-    item: TextItemData,
-    isSelected: MutableState<Boolean>,
-) {
-    isSelected.value = !isSelected.value
-    item.isSelected = isSelected.value
 }
 
 @Composable
@@ -446,12 +434,12 @@ fun ResultAlertPreview() {
 fun TextInputCard(
     item: TextItemData,
     text: MutableState<String>,
-    isSelected: MutableState<Boolean>,
+    isSelected: Boolean,
     onItemClick: (Offset) -> Unit,
     onLongPress: (Offset) -> Unit,
 ) {
     val cardBackground =
-        if (isSelected.value) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.background
+        if (isSelected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.background
     
     Card(
         modifier = Modifier
