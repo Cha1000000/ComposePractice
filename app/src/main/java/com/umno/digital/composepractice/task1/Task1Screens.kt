@@ -29,23 +29,28 @@ import androidx.compose.material.Scaffold
 //noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -77,6 +82,7 @@ import com.umno.digital.composepractice.R
 import com.umno.digital.composepractice.data.TextItemData
 import com.umno.digital.composepractice.data.createTextInputList
 import com.umno.digital.composepractice.ui.theme.ComposePracticeTheme
+import androidx.compose.foundation.background
 
 @Preview(
     showBackground = true,
@@ -89,140 +95,85 @@ import com.umno.digital.composepractice.ui.theme.ComposePracticeTheme
 fun ListOfTextInputScreenPreview() {
     ComposePracticeTheme {
         ListOfTextInputsScreen(
-            PaddingValues(),
-            rememberNavController(),
+            navController = rememberNavController(),
         )
     }
 }
 
-@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListOfTextInputsScreen(
-    paddingValues: PaddingValues,
     navController: NavHostController,
 ) {
     var textInputList by rememberSaveable { mutableStateOf(createTextInputList()) }
-    val showFABs = remember { mutableStateOf(false) }
+    val deletedItems = remember { mutableStateListOf<TextItemData>() }
     val openDialog = rememberSaveable { mutableStateOf(false) }
     val resultText = rememberSaveable { mutableStateOf("") }
-    val deletedItems = remember { mutableStateListOf<TextItemData>() }
     val keyboardController = LocalSoftwareKeyboardController.current
-    val context = LocalContext.current // получение контекста
+    val context = LocalContext.current
+    
+    // Состояние выбранных элементов
+    var hasSelectedItems by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.task1_screen_title),
-                        color = Color.White,
-                        fontSize = 20.sp
-                    )
-                },
-                backgroundColor = MaterialTheme.colorScheme.primary,
-                navigationIcon = {
-                    IconButton(
-                        onClick = { navController.navigate(MAIN_SCREEN) }
-                    ) {
-                        Icon(
-                            imageVector = ImageVector.vectorResource(R.drawable.ic_back),
-                            contentDescription = "ArrowBack",
-                            tint = Color.White,
-                        )
-                    }
-                },
+            TextInputTopAppBar(
+                onNavigateBack = { navController.navigate(MAIN_SCREEN) }
             )
         },
-    ) {
-        Surface {
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentAlignment = Alignment.BottomEnd,
+        ) {
+            TextInputList(
+                textInputList = textInputList,
+                deletedItems = deletedItems,
+                keyboardController = keyboardController,
+                onItemSelected = { 
+                    // Обновляем состояние выбранных элементов
+                    hasSelectedItems = textInputList.any { it.isSelected && !deletedItems.contains(it) }
+                }
+            )
+            
+            if (hasSelectedItems) {
+                FloatingDeleteExtendedButton(
+                    onDeleteAllClick = {
+                        textInputList = textInputList.drop(textInputList.size)
+                        hasSelectedItems = false
+                    },
+                    onDeleteSelectedClick = { 
+                        deleteSelected(textInputList, deletedItems)
+                        // Сбрасываем выделение после удаления
+                        textInputList.forEach { it.isSelected = false }
+                        textInputList = ArrayList(textInputList)
+                        hasSelectedItems = false
+                    }
+                )
+            }
+            
+            // Обертка для кнопки с дополнительным отступом снизу
             Box(
-                modifier = Modifier.fillMaxSize().padding(paddingValues),
-                contentAlignment = Alignment.BottomEnd,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+                    .padding(bottom = 56.dp), // Отступ для нижней панели навигации
+                contentAlignment = Alignment.BottomCenter
             ) {
-                val state = rememberLazyListState()
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 64.dp),
-                    state = state
-                ) {
-                    itemsIndexed(
-                        items = textInputList,
-                        // Provide a unique key based on the item content
-                        key = { _, item -> item.hashCode() },
-                        itemContent = { _, item ->
-                            AnimatedVisibility(
-                                visible = !deletedItems.contains(item),
-                                enter = expandHorizontally(),
-                                exit = shrinkHorizontally(animationSpec = tween(300))
-                            ) {
-                                val text = rememberSaveable { mutableStateOf(item.text) }
-                                val isSelected = rememberSaveable { mutableStateOf(item.isSelected) }
-                                TextInputCard(
-                                    text = text,
-                                    isSelected = isSelected,
-                                    onItemClick = {
-                                        keyboardController?.hide()
-                                        if (textInputList.any { it.isSelected }) {
-                                            toggleSelectedItem(
-                                                item = item,
-                                                isSelected = isSelected,
-                                                showFABs = showFABs,
-                                                textInputList = textInputList,
-                                                deletedItems = deletedItems,
-                                            )
-                                        }
-                                    },
-                                    onLongPress = {
-                                        toggleSelectedItem(
-                                            item = item,
-                                            isSelected = isSelected,
-                                            showFABs = showFABs,
-                                            textInputList = textInputList,
-                                            deletedItems = deletedItems,
-                                        )
-                                    },
-                                    onTextFieldFocused = {
-                                        if (it.isFocused && item.isSelected)
-                                            toggleSelectedItem(
-                                                item = item,
-                                                isSelected = isSelected,
-                                                showFABs = showFABs,
-                                                textInputList = textInputList,
-                                                deletedItems = deletedItems,
-                                            )
-                                    })
-                                item.text = text.value
-                            }
-                        }
-                    )
-                }
-                if (showFABs.value) {
-                    FloatingDeleteExtendedButton(
-                        {
-                            textInputList = textInputList.drop(textInputList.size)
-                            showFABs.value = false
-                        },
-                        { deleteSelected(textInputList, deletedItems, showFABs) }
-                    )
-                }
-                Button(
+                CollectInputButton(
                     onClick = {
                         val dataList = textInputList.filterNot { deletedItems.contains(it) }
                         resultText.value = collectedInputs(dataList, context)
                         openDialog.value = true
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(70.dp)
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.button_collect_input_text),
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                }
+                    }
+                )
             }
-            if (openDialog.value) ShowResultDialog(
+        }
+        
+        if (openDialog.value) {
+            ShowResultDialog(
                 result = resultText.value,
                 dialogState = openDialog
             )
@@ -230,18 +181,109 @@ fun ListOfTextInputsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TextInputTopAppBar(onNavigateBack: () -> Unit) {
+    CenterAlignedTopAppBar(
+        title = {
+            Text(
+                text = stringResource(R.string.task1_screen_title),
+                color = Color.White,
+                fontSize = 20.sp
+            )
+        },
+        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            titleContentColor = Color.White,
+            navigationIconContentColor = Color.White
+        ),
+        navigationIcon = {
+            IconButton(onClick = onNavigateBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "ArrowBack",
+                    tint = Color.White,
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun TextInputList(
+    textInputList: List<TextItemData>,
+    deletedItems: SnapshotStateList<TextItemData>,
+    keyboardController: androidx.compose.ui.platform.SoftwareKeyboardController?,
+    onItemSelected: () -> Unit
+) {
+    val state = rememberLazyListState()
+    
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 130.dp),
+        state = state
+    ) {
+        itemsIndexed(
+            items = textInputList,
+            key = { _, item -> item.hashCode() },
+            itemContent = { _, item ->
+                AnimatedVisibility(
+                    visible = !deletedItems.contains(item),
+                    enter = expandHorizontally(),
+                    exit = shrinkHorizontally(animationSpec = tween(300))
+                ) {
+                    val text = rememberSaveable { mutableStateOf(item.text) }
+                    val isSelected = rememberSaveable { mutableStateOf(item.isSelected) }
+                    
+                    TextInputCard(
+                        item = item,
+                        text = text,
+                        isSelected = isSelected,
+                        onItemClick = {
+                            keyboardController?.hide()
+                            toggleSelectedItem(
+                                item = item,
+                                isSelected = isSelected,
+                            )
+                            onItemSelected()
+                        },
+                        onLongPress = {
+                            toggleSelectedItem(
+                                item = item,
+                                isSelected = isSelected,
+                            )
+                            onItemSelected()
+                        }
+                    )
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun CollectInputButton(onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(70.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.button_collect_input_text),
+            style = MaterialTheme.typography.titleLarge,
+        )
+    }
+}
+
 private fun toggleSelectedItem(
     item: TextItemData,
     isSelected: MutableState<Boolean>,
-    showFABs: MutableState<Boolean>,
-    textInputList: List<TextItemData>,
-    deletedItems: SnapshotStateList<TextItemData>
 ) {
     isSelected.value = !isSelected.value
     item.isSelected = isSelected.value
-    showFABs.value = (textInputList.filterNot {
-        deletedItems.contains(it)
-    }.any { it.isSelected })
 }
 
 @Composable
@@ -255,7 +297,7 @@ fun FloatingDeleteExtendedButton(
             DeletionFABs(onDeleteAllClick, onDeleteSelectedClick)
         }
         ExtendedFloatingActionButton(
-            modifier = Modifier.padding(end = 12.dp, bottom = 80.dp),
+            modifier = Modifier.padding(end = 12.dp, bottom = 140.dp),
             text = { Text(stringResource(R.string.delete_actions)) },
             icon = { Icon(Icons.Filled.Delete, contentDescription = "Delete") },
             containerColor = MaterialTheme.colorScheme.tertiary,
@@ -270,55 +312,54 @@ fun FloatingDeleteExtendedButton(
 @Composable
 fun DeletionFABs(onDeleteAllClick: () -> Unit, onDeleteSelectedClick: () -> Unit) {
     Column(
-        modifier = Modifier.padding(end = 12.dp),
+        modifier = Modifier.padding(end = 12.dp, bottom = 12.dp),
         horizontalAlignment = Alignment.End
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        DeleteActionRow(
+            text = stringResource(R.string.delete_selected),
+            onClick = onDeleteSelectedClick
+        )
+        
+        DeleteActionRow(
+            text = stringResource(R.string.delete_all),
+            onClick = onDeleteAllClick,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+    }
+}
+
+@Composable
+private fun DeleteActionRow(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            modifier = Modifier.padding(end = 6.dp),
+            text = text,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        SmallFloatingActionButton(
+            onClick = onClick,
+            containerColor = MaterialTheme.colorScheme.tertiary,
+            contentColor = MaterialTheme.colorScheme.background,
+            shape = CircleShape
         ) {
-            Text(
-                modifier = Modifier.padding(end = 6.dp),
-                text = stringResource(R.string.delete_selected),
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            SmallFloatingActionButton(
-                onClick = onDeleteSelectedClick,
-                containerColor = MaterialTheme.colorScheme.tertiary,
-                contentColor = MaterialTheme.colorScheme.background,
-                shape = CircleShape
-            ) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete selected")
-            }
-        }
-        Row(
-            modifier = Modifier.padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                modifier = Modifier.padding(end = 6.dp),
-                text = stringResource(R.string.delete_all),
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            SmallFloatingActionButton(
-                onClick = onDeleteAllClick,
-                containerColor = MaterialTheme.colorScheme.tertiary,
-                contentColor = MaterialTheme.colorScheme.background,
-                shape = CircleShape
-            ) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete selected")
-            }
+            Icon(Icons.Filled.Delete, contentDescription = "Delete action")
         }
     }
 }
 
 private fun deleteSelected(
     textInputList: List<TextItemData>,
-    deletedItems: SnapshotStateList<TextItemData>,
-    showFABs: MutableState<Boolean>
+    deletedItems: SnapshotStateList<TextItemData>
 ) {
     val selectedItems = textInputList.filter { it.isSelected }
     deletedItems.addAll(selectedItems)
-    showFABs.value = false
 }
 
 @Preview(
@@ -336,18 +377,17 @@ fun FloatingDeleteExtendedButtonPreview() {
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.BottomEnd,
         ) {
-            FloatingDeleteExtendedButton({}, {}, rememberSaveable { mutableStateOf(true) })
+            FloatingDeleteExtendedButton({}, {})
         }
     }
 }
 
 private fun collectedInputs(inputs: List<TextItemData>, context: Context): String {
     if (inputs.all { it.text.isBlank() }) return context.getString(R.string.empty_data)
-    var collectedText = ""
-    inputs.onEachIndexed { index, textItemData ->
-        collectedText += "${index + 1}. ${textItemData.text.ifBlank { context.getString(R.string.text_empty) }}\n"
-    }
-    return collectedText
+    
+    return inputs.mapIndexed { index, textItemData ->
+        "${index + 1}. ${textItemData.text.ifBlank { context.getString(R.string.text_empty) }}"
+    }.joinToString("\n")
 }
 
 @Composable
@@ -355,14 +395,12 @@ fun ShowResultDialog(result: String, dialogState: MutableState<Boolean>) {
     AlertDialog(
         onDismissRequest = { dialogState.value = false },
         confirmButton = {
-            TextButton(onClick = {
-                dialogState.value = false
-            }) { Text(text = stringResource(R.string.button_ok_label)) }
+            TextButton(onClick = { dialogState.value = false }) { 
+                Text(text = stringResource(R.string.button_ok_label)) 
+            }
         },
         dismissButton = {
-            TextButton(onClick = {
-                dialogState.value = false
-            }) {
+            TextButton(onClick = { dialogState.value = false }) {
                 Text(
                     text = stringResource(R.string.button_cancel_label),
                     color = MaterialTheme.colorScheme.onTertiary,
@@ -382,7 +420,6 @@ fun ShowResultDialog(result: String, dialogState: MutableState<Boolean>) {
                 color = MaterialTheme.colorScheme.onSurface,
             )
         },
-        backgroundColor = MaterialTheme.colorScheme.background,
     )
 }
 
@@ -399,23 +436,23 @@ fun ResultAlertPreview() {
     ComposePracticeTheme {
         ShowResultDialog(
             result = "Данные отсутствуют",
-            dialogState = remember {
-                mutableStateOf(true)
-            })
+            dialogState = remember { mutableStateOf(true) }
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TextInputCard(
+    item: TextItemData,
     text: MutableState<String>,
     isSelected: MutableState<Boolean>,
     onItemClick: (Offset) -> Unit,
     onLongPress: (Offset) -> Unit,
-    onTextFieldFocused: (FocusState) -> Unit,
 ) {
     val cardBackground =
         if (isSelected.value) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.background
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -434,19 +471,21 @@ fun TextInputCard(
             value = text.value,
             onValueChange = { newText ->
                 text.value = newText.take(28)
+                item.text = text.value
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
-                .onFocusChanged(onTextFieldFocused),
+                .padding(20.dp),
             textStyle = TextStyle(fontSize = 16.sp),
             placeholder = { Text(stringResource(R.string.text_input_hint)) },
             singleLine = true,
             maxLines = 1,
             keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
-            colors = TextFieldDefaults.outlinedTextFieldColors(
+            colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.secondary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
             )
         )
     }

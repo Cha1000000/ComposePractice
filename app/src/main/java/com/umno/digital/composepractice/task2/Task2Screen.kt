@@ -205,7 +205,7 @@ fun UUIDItem(item: UuidItem, onUpdateUUID: () -> Unit) {
             horizontalArrangement = Arrangement.Absolute.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = item.uuid, fontSize = 14.sp)
+            Text(text = item.uuid, fontSize = 16.sp)
             IconButton(onClick = onUpdateUUID) {
                 Icon(
                     imageVector = Icons.Filled.Refresh,
