@@ -40,6 +40,7 @@ import androidx.compose.material.pullrefresh.rememberPullRefreshState
 //noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.rememberDismissState
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -67,12 +68,12 @@ import com.umno.digital.composepractice.common.DismissBackground
 import com.umno.digital.composepractice.data.UuidItem
 import com.umno.digital.composepractice.progress.ProgressIndicator
 import com.umno.digital.composepractice.ui.theme.ComposePracticeTheme
-import com.umno.digital.composepractice.ui.theme.Orange
+import com.umno.digital.composepractice.ui.theme.CyberGreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun ListOfUuidsScreen(
@@ -97,15 +98,19 @@ fun ListOfUuidsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
                         text = stringResource(R.string.task2_screen_title),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 20.sp
                     )
                 },
-                backgroundColor = MaterialTheme.colorScheme.primary,
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
                 navigationIcon = {
                     IconButton(
                         onClick = { navController.navigate(MAIN_SCREEN) }
@@ -113,7 +118,7 @@ fun ListOfUuidsScreen(
                         Icon(
                             imageVector = ImageVector.vectorResource(R.drawable.ic_back),
                             contentDescription = "ArrowBack",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                         )
                     }
                 },
@@ -123,7 +128,7 @@ fun ListOfUuidsScreen(
             FloatingActionButton(
                 modifier = Modifier.padding(bottom = 70.dp),
                 onClick = { uuidItemsViewModel.addItem() },
-                containerColor = Orange,
+                containerColor = CyberGreen,
                 contentColor = MaterialTheme.colorScheme.background,
                 shape = CircleShape
             ) {

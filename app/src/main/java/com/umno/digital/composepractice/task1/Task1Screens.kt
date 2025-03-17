@@ -83,6 +83,7 @@ import com.umno.digital.composepractice.data.TextItemData
 import com.umno.digital.composepractice.data.createTextInputList
 import com.umno.digital.composepractice.ui.theme.ComposePracticeTheme
 import androidx.compose.foundation.background
+import androidx.compose.material3.AlertDialogDefaults
 
 @Preview(
     showBackground = true,
@@ -152,7 +153,7 @@ fun ListOfTextInputsScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.05f))
                     .padding(bottom = 56.dp),
                 contentAlignment = Alignment.BottomCenter
             ) {
@@ -182,21 +183,21 @@ private fun TextInputTopAppBar(onNavigateBack: () -> Unit) {
         title = {
             Text(
                 text = stringResource(R.string.task1_screen_title),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onPrimary,
                 fontSize = 20.sp
             )
         },
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
             containerColor = MaterialTheme.colorScheme.primary,
-            titleContentColor = Color.White,
-            navigationIconContentColor = Color.White
+            titleContentColor = MaterialTheme.colorScheme.onPrimary,
+            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
         ),
         navigationIcon = {
             IconButton(onClick = onNavigateBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "ArrowBack",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                 )
             }
         },
@@ -215,6 +216,7 @@ private fun TextInputList(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
             .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 130.dp),
         state = state
     ) {
@@ -378,36 +380,43 @@ private fun collectedInputs(inputs: List<TextItemData>, context: Context): Strin
     }.joinToString("\n")
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShowResultDialog(result: String, dialogState: MutableState<Boolean>) {
     AlertDialog(
         onDismissRequest = { dialogState.value = false },
         confirmButton = {
             TextButton(onClick = { dialogState.value = false }) { 
-                Text(text = stringResource(R.string.button_ok_label)) 
+                Text(
+                    text = stringResource(R.string.button_ok_label),
+                    color = MaterialTheme.colorScheme.onSecondary
+                ) 
             }
         },
         dismissButton = {
             TextButton(onClick = { dialogState.value = false }) {
                 Text(
                     text = stringResource(R.string.button_cancel_label),
-                    color = MaterialTheme.colorScheme.onTertiary,
+                    color = MaterialTheme.colorScheme.onSecondary
                 )
             }
         },
         title = {
             Text(
                 text = stringResource(R.string.result_alert_title),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.titleMedium,
             )
         },
         text = {
             Text(
                 text = result,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
+        shape = MaterialTheme.shapes.extraLarge,
+        backgroundColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 
@@ -439,7 +448,13 @@ fun TextInputCard(
     onLongPress: (Offset) -> Unit,
 ) {
     val cardBackground =
-        if (isSelected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.background
+        if (isSelected) MaterialTheme.colorScheme.scrim else MaterialTheme.colorScheme.background
+    
+    val textColor =
+        if (isSelected) MaterialTheme.colorScheme.outlineVariant else MaterialTheme.colorScheme.onSurface
+    
+    val borderColor =
+        if (isSelected) MaterialTheme.colorScheme.outlineVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     
     Card(
         modifier = Modifier
@@ -464,16 +479,24 @@ fun TextInputCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(20.dp),
-            textStyle = TextStyle(fontSize = 16.sp),
-            placeholder = { Text(stringResource(R.string.text_input_hint)) },
+            textStyle = TextStyle(
+                fontSize = 16.sp,
+                color = textColor
+            ),
+            placeholder = { 
+                Text(
+                    text = stringResource(R.string.text_input_hint),
+                    color = textColor.copy(alpha = 0.7f)
+                ) 
+            },
             singleLine = true,
             maxLines = 1,
             keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                focusedBorderColor = if (isSelected) MaterialTheme.colorScheme.outlineVariant else MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = borderColor,
+                focusedTextColor = textColor,
+                unfocusedTextColor = textColor,
             )
         )
     }
